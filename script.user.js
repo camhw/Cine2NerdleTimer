@@ -76,8 +76,11 @@ const LOCALSTORAGE_KEY_TIMER = 'Cine2NerdleTimer';
         const m = Math.floor(((ms / (1000*60)) % 60));
         const s = (ms / 1000) % 60;
 
-        const mPadded = `${m}`.padEnd(2, '0');
-        const sPadded = `${s}`.padEnd(2, '0');
+        // Pad to two digits if necessary
+        const mPadded = `${m}`.padStart(2, '0');
+        // Round to three decimal places, pad to two digits if necessary (i.e. no decimal)
+        const sRounded = Math.round((s + Number.EPSILON) * 1000) / 1000
+        const sPadded = `${sRounded}`.padStart(2, '0');
         return `${h}:${mPadded}:${sPadded}`;
     }
 
