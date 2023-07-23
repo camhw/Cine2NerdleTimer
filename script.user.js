@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Cine2Nerdle timer
 // @namespace    http://tampermonkey.net/
-// @version      0.2
+// @version      0.3
 // @description  Timer for Cine2Nerdle for certain users that lack competitive integrity.
 // @author       The only honest Cine2Nerdle player
 // @match        https://www.cinenerdle2.app/**
@@ -12,15 +12,30 @@
 // ==/UserScript==
 
 const LOCALSTORAGE_KEY_TIMER = 'Cine2NerdleTimer';
+const SHARE_STRING_TEXT_CLASSNAME = 'share-string-text';
 
 (function() {
     'use strict';
 
+    // Game state
     let activePuzzle = undefined;
+    let puzzleLoaded = false;
     let startTime = undefined;
     let endTime = undefined;
     let gameFinished = false;
+
+    // Share results container
+    let shareResultsContainerUpdated = false;
     let resultsCopied = false;
+
+    // Footer timer
+    const createFooterTimer = () => {
+        const timer = document.createElement('H1');
+        timer.className = 'black-text footer-timer';
+        return timer;
+    }
+    const footerTimer = createFooterTimer();
+    let footerIntervalId = undefined;
 
     const readTimerData = () => {
         let timerData;
@@ -60,8 +75,13 @@ const LOCALSTORAGE_KEY_TIMER = 'Cine2NerdleTimer';
         writeTimerKV(currentPuzzle, 'endTime', endTime);
     };
 
+    const checkPuzzleLoaded = () => {
+        return !!document.getElementsByClassName('puzzle-id').length;
+    };
+
     const initializePuzzle = (currentPuzzle) => {
         activePuzzle = currentPuzzle;
+        puzzleLoaded = checkPuzzleLoaded();
 
         const timerData = readTimerData();
         startTime = timerData[currentPuzzle]?.startTime || undefined;
@@ -69,12 +89,19 @@ const LOCALSTORAGE_KEY_TIMER = 'Cine2NerdleTimer';
 
         gameFinished = false;
         resultsCopied = false;
+        shareResultsContainerUpdated = false;
+
+        if (footerIntervalId) {
+            clearInterval(footerIntervalId);
+        }
+        footerIntervalId = undefined;
     };
 
-    const msToTimestamp = (ms) => {
+    const msToTimestamp = (ms, shouldFloorSeconds) => {
         const h = Math.floor(((ms / (1000*60*60)) % 24));
         const m = Math.floor(((ms / (1000*60)) % 60));
-        const s = (ms / 1000) % 60;
+        const sFloat = (ms / 1000) % 60;
+        const s = shouldFloorSeconds ? Math.floor(sFloat) : sFloat;
 
         // Pad to two digits if necessary
         const mPadded = `${m}`.padStart(2, '0');
@@ -84,6 +111,48 @@ const LOCALSTORAGE_KEY_TIMER = 'Cine2NerdleTimer';
         return `${h}:${mPadded}:${sPadded}`;
     }
 
+    const updateFooterTimer = () => {
+        if (!footerTimer) {
+            console.error('Unable to update footer timer; does not exist');
+        }
+        if (!startTime) {
+            console.error('Unable to update footer timer; start time not defined');
+        }
+
+        const elapsedTime = endTime ? endTime - startTime : Date.now() - startTime;
+        footerTimer.textContent = `TIME: ${msToTimestamp(elapsedTime, !endTime)}`;
+    };
+    const insertFooterTimer = () => {
+        console.log('Inserting footer timer');
+        const gridFooter = document.getElementsByClassName('grid-footer')[0];
+        if (!footerTimer) {
+            // Shouldn't get here, but just in case, recreate footer timer
+            footerTimer = createFooterTimer();
+        }
+        gridFooter.appendChild(footerTimer);
+
+        if (footerIntervalId) {
+            clearInterval(footerIntervalId);
+            footerIntervalId = undefined;
+        }
+        updateFooterTimer();
+        footerIntervalId = setInterval(updateFooterTimer, 1000);
+    };
+
+    const updateShareResultsContainer = () => {
+        if (!startTime || !endTime) {
+            return;
+        }
+        shareResultsContainerUpdated = true;
+
+        const elapsedTime = endTime - startTime;
+        const timerShareString = document.createElement('div');
+        timerShareString.className = SHARE_STRING_TEXT_CLASSNAME;
+        timerShareString.textContent = `Time: ${msToTimestamp(elapsedTime)}`;
+
+        const shareStringElement = document.getElementsByClassName('share-string')[0];
+        shareStringElement.insertBefore(timerShareString, shareStringElement.lastChild);
+    };
     const documentObserver = new MutationObserver((mutations, obs) => {
         // Reset page variables if location changes
         try {
@@ -99,11 +168,17 @@ const LOCALSTORAGE_KEY_TIMER = 'Cine2NerdleTimer';
             return;
         }
 
-        if (!startTime && document.getElementsByClassName('puzzle-id').length) {
+        if (!puzzleLoaded && checkPuzzleLoaded()) {
+            puzzleLoaded = true;
+        }
+        if (!startTime && puzzleLoaded) {
             startTime = Date.now();
             writeStartTime(activePuzzle, startTime);
 
             console.log(`Game started ${startTime}`);
+        }
+        if (startTime && puzzleLoaded && !footerIntervalId) {
+            insertFooterTimer();
         }
         if (!endTime && document.getElementsByClassName('share-result-container').length) {
             endTime = Date.now();
@@ -114,6 +189,12 @@ const LOCALSTORAGE_KEY_TIMER = 'Cine2NerdleTimer';
 
         const shareResultsContainer = document.getElementsByClassName('share-result-container')[0];
         const shareWithFriendsString = document.getElementsByClassName('share-with-friends-string')[0];
+        if (!shareResultsContainer) {
+            shareResultsContainerUpdated = false;
+        }
+        if (shareResultsContainer && !shareResultsContainerUpdated) {
+            updateShareResultsContainer();
+        }
         if (shareResultsContainer && shareWithFriendsString) {
             resultsCopied = false;
         }
@@ -122,14 +203,11 @@ const LOCALSTORAGE_KEY_TIMER = 'Cine2NerdleTimer';
             resultsCopied = true;
             console.log('Results copied');
             let shareString = '';
-            const shareStringTextElements = document.getElementsByClassName('share-string-text');
+            const shareStringTextElements = document.getElementsByClassName(SHARE_STRING_TEXT_CLASSNAME);
             for (let i = 0; i < shareStringTextElements.length; i++) {
                 const e = shareStringTextElements[i];
                 if (i === shareStringTextElements.length - 1) {
-                    // Insert time as second last entry
-                    const elapsedTime = endTime - startTime;
-                    shareString += `Time: ${msToTimestamp(elapsedTime)}\n`;
-                    shareString += `${e.textContent}`;
+                    shareString += e.textContent;
                 } else {
                     shareString += `${e.textContent}\n`;
                 }
