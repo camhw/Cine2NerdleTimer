@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Cine2Nerdle timer
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.2
 // @description  Timer for Cine2Nerdle for certain users that lack competitive integrity.
 // @author       The only honest Cine2Nerdle player
 // @match        https://www.cinenerdle2.app/**
