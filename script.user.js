@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Cine2Nerdle timer
 // @namespace    http://tampermonkey.net/
-// @version      0.3
+// @version      0.4
 // @description  Timer for Cine2Nerdle for certain users that lack competitive integrity.
 // @author       The only honest Cine2Nerdle player
 // @match        https://www.cinenerdle2.app/**
@@ -99,15 +99,17 @@ const SHARE_STRING_TEXT_CLASSNAME = 'share-string-text';
 
     const msToTimestamp = (ms, shouldFloorSeconds) => {
         const h = Math.floor(((ms / (1000*60*60)) % 24));
-        const m = Math.floor(((ms / (1000*60)) % 60));
-        const sFloat = (ms / 1000) % 60;
-        const s = shouldFloorSeconds ? Math.floor(sFloat) : sFloat;
 
+        const m = Math.floor(((ms / (1000*60)) % 60));
         // Pad to two digits if necessary
         const mPadded = `${m}`.padStart(2, '0');
-        // Round to three decimal places, pad to two digits if necessary (i.e. no decimal)
-        const sRounded = Math.round((s + Number.EPSILON) * 1000) / 1000
-        const sPadded = `${sRounded}`.padStart(2, '0');
+
+        const sFloat = (ms / 1000) % 60;
+        // Round to three decimal places if needed
+        const s = shouldFloorSeconds ? Math.floor(sFloat) : (Math.round((sFloat + Number.EPSILON) * 1000) / 1000).toFixed(3);
+        // Pad depending on floored or floated seconds
+        const sPadded = `${s}`.padStart(shouldFloorSeconds ? 2 : 6, '0');
+
         return `${h}:${mPadded}:${sPadded}`;
     }
 
