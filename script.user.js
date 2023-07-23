@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         Cine2Nerdle timer
 // @namespace    http://tampermonkey.net/
-// @version      0.4
+// @version      0.5
 // @description  Timer for Cine2Nerdle for certain users that lack competitive integrity.
 // @author       The only honest Cine2Nerdle player
 // @match        https://www.cinenerdle2.app/**
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=cinenerdle2.app
 // @updateURL    https://github.com/camhw/Cine2NerdleTimer/raw/main/script.user.js
-// @downloadURL  https://github.com/camhw/Cine2NerdleTimer/main/script.user.js
+// @downloadURL  https://github.com/camhw/Cine2NerdleTimer/raw/main/script.user.js
 // @grant        none
 // ==/UserScript==
 
